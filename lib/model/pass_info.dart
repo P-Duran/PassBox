@@ -65,7 +65,7 @@ class PassInfo {
     DateTime relDate;
     try {
       if (data['relevantDate'] != null)
-          relDate = DateTime.parse(data['relevantDate']); 
+        relDate = DateTime.parse(data['relevantDate']);
     } catch (_) {
       print("No relevant date");
     }
@@ -98,7 +98,6 @@ class PassInfo {
     List<Field> sFields = Utils.jsonToFieldList(passinfo['secondaryFields']);
     List<Field> aFields = Utils.jsonToFieldList(passinfo['auxiliaryFields']);
     List<Field> bFields = Utils.jsonToFieldList(passinfo['backFields']);
-    print("rel date "+relDate.toString());
     return PassInfo(
         passPath: _passPath,
         appPath: _appPath,

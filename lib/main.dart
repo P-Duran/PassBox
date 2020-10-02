@@ -242,7 +242,7 @@ class _HomePageScreen extends State<HomePageScreen>
                       loop: false,
                       viewportFraction: 0.7,
                       itemCount: snapshot.data.length,
-                      controller: _swiperController, 
+                      controller: _swiperController,
                       itemBuilder: (BuildContext context, int index) {
                         return MiniPassCard(
                           passIndex: index,
@@ -308,6 +308,7 @@ class _HomePageScreen extends State<HomePageScreen>
     PkpassProvider.of(context).value.sendEvent.add(OpenPassesEvent());
     PkpassProvider.of(context).value.sendEvent.add(
         GetSettingsPassEvent(PkpassProvider.of(context).settingsInfo.length));
+    PkpassProvider.of(context).value.sendEvent.add(GetFoldersEvent());
   }
 }
 

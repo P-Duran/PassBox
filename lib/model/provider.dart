@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -7,8 +6,9 @@ import 'package:overlay_support/overlay_support.dart';
 import 'package:passbox/model/model.dart';
 import 'package:passbox/model/pass_info.dart';
 import 'package:passbox/screens/settings_screen.dart';
-import 'package:passbox/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 
 class PkpassProvider extends InheritedWidget {
   PkpassProvider({
@@ -21,11 +21,19 @@ class PkpassProvider extends InheritedWidget {
         super(key: key, child: child);
 
   PkpassManager value;
-  List<TileData> settingsInfo = [
-    TileData(
-        "Remove", "Super Delete", "Delete passes permanently"),
-    TileData("Notifications", "Hide Notifications",
-        "Activate if you hate notifications")
+  List<SettingData> settingsInfo = [
+    SettingData(
+      "Remove",
+      "Super Delete",
+      "Delete passes permanently",
+    ),
+    SettingData("Notifications", "Hide Notifications",
+        "Activate if you hate notifications"),
+    SettingData(
+      "Folders",
+      "Selective Scan",
+      "Scan files only in the selected folders",
+    ),
   ];
   static PkpassProvider of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<PkpassProvider>();
@@ -38,6 +46,7 @@ class PkpassProvider extends InheritedWidget {
 class PkpassManager {
   List<PassInfo> _passList = [];
   List<bool> settingsList = [];
+  List<String> folders_list = [];
 
   StreamController<List<PassInfo>> _passInfoStreamontroller =
       new StreamController.broadcast();
@@ -48,6 +57,11 @@ class PkpassManager {
       new StreamController.broadcast();
   Stream<List<bool>> get settings => _settingsStreamontroller.stream;
   Sink<List<bool>> get _settingsSink => _settingsStreamontroller.sink;
+
+  StreamController<List<String>> _foldersStreamontroller =
+      new StreamController.broadcast();
+  Stream<List<String>> get folders => _foldersStreamontroller.stream;
+  Sink<List<String>> get _foldersSink => _foldersStreamontroller.sink;
 
   final _passEventController = StreamController<PassEvent>();
   Sink<PassEvent> get sendEvent => _passEventController.sink;
@@ -76,7 +90,13 @@ class PkpassManager {
           _passList = value;
           _passListSink.add(_passList);
         }
-      } catch (_) {
+      } catch (e) {
+        var mailToSend = "mailto:pdhevs.supp@gmail.com?subject=bug>&body=$e";
+        if (await canLaunch(mailToSend)) {
+          await launch(mailToSend);
+        } else {
+          throw 'Could not launch $mailToSend';
+        }
         showSimpleNotification(
             Text(
               "Ups, passes could not be imported!!",
@@ -90,7 +110,6 @@ class PkpassManager {
             ));
       }
     } else if (event is OpenPassesEvent) {
-      print("OpenPassesEvent");
       openPkpasses().then(
         (value) {
           _passList = value;
@@ -123,6 +142,24 @@ class PkpassManager {
       print('settings $_settings');
       settingsList = _settings.map((e) => e == 'true').toList();
       _settingsSink.add(settingsList);
+    } else if (event is GetFoldersEvent) {
+      print("efoihfoifhoih");
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<String> _folders = prefs.getStringList('folders') ?? [];
+      print(_folders);
+      print(folders_list);
+      _foldersSink.add(_folders);
+      folders_list = _folders;
+    } else if (event is AddFolderEvent) {
+      List<String> _folders = folders_list;
+      if (event.folder != null) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        _folders = prefs.getStringList('folders') ?? [];
+        _folders.add(event.folder);
+        await prefs.setStringList('folders', _folders);
+      }
+      _foldersSink.add(_folders);
+      folders_list = _folders;
     }
   }
 }
@@ -153,3 +190,13 @@ class GetSettingsPassEvent extends PassEvent {
 
   GetSettingsPassEvent(this.lentgh);
 }
+
+class GetFoldersEvent extends PassEvent {}
+
+class AddFolderEvent extends PassEvent {
+  final String folder;
+
+  AddFolderEvent(this.folder);
+}
+
+class ClearSettings extends PassEvent {}

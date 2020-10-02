@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:passbox/model/pass_info.dart';
+import 'package:passbox/model/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:passbox/main.dart';
@@ -19,13 +20,28 @@ Future<List<PassInfo>> extractPkpasses() async {
         Permission.storage]); // it should print PermissionStatus.granted
   }
   Directory externalDir = await getExternalStorageDirectory();
-  Directory appdir = await getExternalStorageDirectory();
-  String externalPath = externalDir.path;
   Directory downDir = Directory("/storage/emulated/0");
-
-  var lis = downDir.list(recursive: true);
-  var lis2 = await lis.toList();
-  for (var element in lis2) {
+  var status2 = await Permission.storage.status;
+  if (!status2.isGranted) {
+    await Permission.storage.request();
+  }
+  bool selectiveScan = false;
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  try {
+    List<String> _settings = prefs.getStringList('settings');
+    selectiveScan = _settings[2] == 'false';
+  } catch (_) {}
+  List<FileSystemEntity> dirList = [];
+  if (selectiveScan) {
+    for (var filePath in prefs.getStringList('folders') ?? []) {
+      var _dir = Directory(filePath);
+      dirList..addAll(await _dir.list().toList());
+    }
+  } else {
+    var dirListStream = downDir.list(recursive: true);
+    dirList = await dirListStream.toList();
+  }
+  for (var element in dirList) {
     if (element.path.endsWith(".pkpass")) {
       try {
         var dir = Directory(externalDir.path +
@@ -33,6 +49,7 @@ Future<List<PassInfo>> extractPkpasses() async {
                 element.path.lastIndexOf("/"), element.path.length - 1));
         if (!await dir.exists()) {
           var d = await dir.create();
+
           File file = File(dir.path + "/file.path");
           file.createSync();
           file.writeAsString(element.path);
