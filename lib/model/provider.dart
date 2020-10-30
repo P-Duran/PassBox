@@ -73,7 +73,7 @@ class PkpassManager {
   _mapEventToState(PassEvent event) async {
     if (event is UpdatePassEvent) {
       try {
-        var value = await extractPkpasses();
+        var value = await Model.extractPkpasses();
         if (event.notification) {
           showSimpleNotification(
               Text(
@@ -110,16 +110,16 @@ class PkpassManager {
             ));
       }
     } else if (event is OpenPassesEvent) {
-      openPkpasses().then(
+      Model.openPkpasses().then(
         (value) {
           _passList = value;
           _passListSink.add(_passList);
         },
       );
     } else if (event is RemovePassEvent) {
-      deletePkpass(event.appPath, event.passPath,
+      Model.deletePkpass(event.appPath, event.passPath,
           permanently: settingsList.isEmpty ? false : settingsList[0]);
-      openPkpasses().then(
+      Model.openPkpasses().then(
         (value) {
           _passList = value;
           _passListSink.add(_passList);
@@ -129,7 +129,6 @@ class PkpassManager {
       var _settings = event.settings.map((e) => e.toString()).toList();
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('settings', _settings);
-      print("Updatesettings " + _settings.toString());
       settingsList = event.settings;
       _settingsSink.add(settingsList);
     } else if (event is GetSettingsPassEvent) {
@@ -139,15 +138,11 @@ class PkpassManager {
       _settings = _settings.length != event.lentgh
           ? List.generate(event.lentgh, (index) => "false")
           : _settings;
-      print('settings $_settings');
       settingsList = _settings.map((e) => e == 'true').toList();
       _settingsSink.add(settingsList);
     } else if (event is GetFoldersEvent) {
-      print("efoihfoifhoih");
       SharedPreferences prefs = await SharedPreferences.getInstance();
       List<String> _folders = prefs.getStringList('folders') ?? [];
-      print(_folders);
-      print(folders_list);
       _foldersSink.add(_folders);
       folders_list = _folders;
     } else if (event is AddFolderEvent) {

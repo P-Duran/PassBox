@@ -60,14 +60,28 @@ class _SettingsScreen extends State<SettingsScreen>
                           }),
                     );
                   else if (index == switchSettings.length)
-                    return AnimatedContainer(
+                    return AnimatedOpacity(
+                      // If the widget is visible, animate to 0.0 (invisible).
+                      // If the widget is hidden, animate to 1.0 (fully visible).
+                      opacity: data[index - 1] ? 1.0 : 0,
                       duration: Duration(milliseconds: 200),
-                      height: data[index - 1] ? 200 : 0,
-                      child: Column(
-                        children: [
-                          Flexible(
-                            child: data[index - 1]
-                                ? ListTile(
+                      // The green box must be a child of the AnimatedOpacity widget.
+                      child: StreamBuilder(
+                        initialData:
+                            PkpassProvider.of(context).value.folders_list,
+                        stream: PkpassProvider.of(context).value.folders,
+                        builder: (BuildContext context,
+                            AsyncSnapshot<List> snapshot) {
+                          var height = (snapshot.data.length * 35.0 + 100);
+                          return AnimatedContainer(
+                            duration: Duration(milliseconds: 300),
+                            height: data[index - 1]
+                                ? (height < 200) ? height : 200
+                                : 0,
+                            child: Column(
+                              children: [
+                                Flexible(
+                                  child: ListTile(
                                     title: Text("Selected Folders"),
                                     trailing: IconButton(
                                       icon: Icon(Icons.folder),
@@ -80,42 +94,34 @@ class _SettingsScreen extends State<SettingsScreen>
                                             .add(AddFolderEvent(res));
                                       },
                                     ),
-                                  )
-                                : Container(),
-                          ),
-                          Flexible(
-                            child: ConstrainedBox(
-                              constraints: new BoxConstraints(
-                                maxHeight: 100.0,
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 30, right: 30),
-                                child: StreamBuilder(
-                                  initialData: PkpassProvider.of(context)
-                                      .value
-                                      .folders_list,
-                                  stream:
-                                      PkpassProvider.of(context).value.folders,
-                                  builder: (BuildContext context,
-                                      AsyncSnapshot<List> snapshot) {
-                                    return ListView.builder(
-                                        itemCount: snapshot.data.length,
-                                        itemBuilder:
-                                            (BuildContext ctxt, int index) {
-                                          return new Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(snapshot.data[index]),
-                                                Divider()
-                                              ]);
-                                        });
-                                  },
+                                  ),
                                 ),
-                              ),
+                                Flexible(
+                                  child: ConstrainedBox(
+                                    constraints: new BoxConstraints(
+                                      maxHeight: 100.0,
+                                    ),
+                                    child: Padding(
+                                        padding: EdgeInsets.only(
+                                            left: 30, right: 30),
+                                        child: ListView.builder(
+                                            itemCount: snapshot.data.length,
+                                            itemBuilder:
+                                                (BuildContext ctxt, int index) {
+                                              return new Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(snapshot.data[index]),
+                                                    Divider()
+                                                  ]);
+                                            })),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     );
                   else
@@ -160,6 +166,7 @@ class _SettingsScreen extends State<SettingsScreen>
   void afterFirstLayout(BuildContext context) {
     PkpassProvider.of(context).value.sendEvent.add(
         GetSettingsPassEvent(PkpassProvider.of(context).settingsInfo.length));
+    PkpassProvider.of(context).value.sendEvent.add(GetFoldersEvent());
   }
 }
 

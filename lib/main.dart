@@ -2,13 +2,15 @@ import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:overlay_support/overlay_support.dart';
+import 'package:passbox/model/pass_info.dart';
 import 'package:passbox/model/provider.dart';
-import 'package:passbox/screens/pass_swiper_screen.dart';
+import 'package:passbox/screens/qr_result_screen.dart';
 import 'package:passbox/screens/settings_screen.dart';
+import 'package:passbox/widgets/custom_dropdown.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:passbox/theme/theme.dart';
 import 'package:passbox/widgets/pass_card.dart';
 import 'package:flutter_swiper/flutter_swiper.dart';
@@ -30,31 +32,35 @@ NotificationAppLaunchDetails notificationAppLaunchDetails;
 
 Future<void> scheduleNotification(
     DateTime dateTime, String title, String body) async {
-  var scheduledNotificationDateTime = dateTime;
-  var vibrationPattern = Int64List(4);
-  vibrationPattern[0] = 0;
-  vibrationPattern[1] = 1000;
-  vibrationPattern[2] = 5000;
-  vibrationPattern[3] = 2000;
+  try {
+    var scheduledNotificationDateTime = dateTime;
+    var vibrationPattern = Int64List(4);
+    vibrationPattern[0] = 0;
+    vibrationPattern[1] = 1000;
+    vibrationPattern[2] = 5000;
+    vibrationPattern[3] = 2000;
 
-  var androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'your other channel id',
-      'your other channel name',
-      'your other channel description',
-      icon: '@mipmap/ic_launcher',
-      sound: RawResourceAndroidNotificationSound('slow_spring_board'),
-      vibrationPattern: vibrationPattern,
-      enableLights: true,
-      color: const Color.fromARGB(255, 255, 0, 0),
-      ledColor: const Color.fromARGB(255, 255, 0, 0),
-      ledOnMs: 1000,
-      ledOffMs: 500);
-  var iOSPlatformChannelSpecifics =
-      IOSNotificationDetails(sound: 'slow_spring_board.aiff');
-  var platformChannelSpecifics = NotificationDetails(
-      androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
-  await flutterLocalNotificationsPlugin.schedule(
-      0, title, body, scheduledNotificationDateTime, platformChannelSpecifics);
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your other channel id',
+        'your other channel name',
+        'your other channel description',
+        icon: '@mipmap/ic_launcher',
+        sound: RawResourceAndroidNotificationSound('slow_spring_board'),
+        vibrationPattern: vibrationPattern,
+        enableLights: true,
+        color: const Color.fromARGB(255, 255, 0, 0),
+        ledColor: const Color.fromARGB(255, 255, 0, 0),
+        ledOnMs: 1000,
+        ledOffMs: 500);
+    var iOSPlatformChannelSpecifics =
+        IOSNotificationDetails(sound: 'slow_spring_board.aiff');
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.schedule(0, title, body,
+        scheduledNotificationDateTime, platformChannelSpecifics);
+  } catch (e) {
+    print(e);
+  }
 }
 
 class ReceivedNotification {
@@ -118,6 +124,10 @@ class _MyApp extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     return OverlaySupport(
       child: PkpassProvider(
         value: PkpassManager(),
@@ -145,10 +155,12 @@ class HomePageScreen extends StatefulWidget {
 class _HomePageScreen extends State<HomePageScreen>
     with AfterLayoutMixin<HomePageScreen> {
   SwiperController _swiperController;
+  PassType filterBy;
   @override
   void initState() {
     // TODO: implement initState
     _swiperController = SwiperController();
+    filterBy = PassType.none;
     super.initState();
   }
 
@@ -173,32 +185,26 @@ class _HomePageScreen extends State<HomePageScreen>
               .add(UpdatePassEvent(notification: true));
         },
       ),
-      ToolCard(
-        icon: Icons.filter_center_focus,
-        color: Colors.black,
-        label: "QR Scanner",
-        function: () async {
-          String cameraScanResult = await scanner.scan();
-          if (await canLaunch(cameraScanResult)) {
-            await launch(cameraScanResult);
-          } else {
-            throw 'Could not launch $cameraScanResult';
-          }
-        },
+      Hero(
+        tag: "QR Scanner",
+        child: ToolCard(
+          icon: Icons.filter_center_focus,
+          color: Colors.black,
+          label: "QR Scanner",
+          function: () async {
+            String cameraScanResult = await scanner.scan();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) {
+                return QrDataScreen(
+                  data: cameraScanResult,
+                  tag: "QR Scanner",
+                );
+              }),
+            );
+          },
+        ),
       ),
-      // ToolCard(
-      //   icon: Icons.folder_open,
-      //   color: Colors.black,
-      //   label: "Archived Passes",
-      //   function: () {
-      //     Navigator.push(
-      //       context,
-      //       CupertinoPageRoute(builder: (_) {
-      //         return SettingsScreen();
-      //       }),
-      //     );
-      //   },
-      // ),
       Hero(
         tag: "settings",
         child: ToolCard(
@@ -223,9 +229,28 @@ class _HomePageScreen extends State<HomePageScreen>
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(20, 30, 20, 0),
-              child: Text(
-                "Your Passes",
-                style: Theme.of(context).textTheme.headline5,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Your Passes",
+                    style: Theme.of(context).textTheme.headline5,
+                  ),
+                  SimpleAccountMenu(
+                    icons: PassType.values
+                        .map((e) => Icon(Utils.passTypeToIconData(e)))
+                        .toList(),
+                    iconText: PassType.values
+                        .map((e) => e.toString().substring(9))
+                        .toList(),
+                    onChange: (index) {
+                      _swiperController.move(0, animation: false);
+                      setState(() {
+                        filterBy = PassType.values[index];
+                      });
+                    },
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -238,15 +263,18 @@ class _HomePageScreen extends State<HomePageScreen>
                   if (snapshot.hasData &&
                       snapshot.data != null &&
                       snapshot.data.isNotEmpty) {
+                    List<PassInfo> passes = snapshot.data;
+                    if (filterBy != PassType.none)
+                      passes = passes.where((i) => i.type == filterBy).toList();
                     return new Swiper(
                       loop: false,
                       viewportFraction: 0.7,
-                      itemCount: snapshot.data.length,
+                      itemCount: passes.length,
                       controller: _swiperController,
                       itemBuilder: (BuildContext context, int index) {
                         return MiniPassCard(
                           passIndex: index,
-                          passList: snapshot.data,
+                          passList: passes,
                           swiperController: _swiperController,
                         );
                       },

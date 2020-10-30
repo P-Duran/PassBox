@@ -3,9 +3,9 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
-enum PassType { boardingPass, coupon, eventTicket, generic, storeCard }
+enum PassType { none, boardingPass, coupon, eventTicket, storeCard, generic }
 
 class PassInfo {
   final String passPath;
@@ -75,23 +75,23 @@ class PassInfo {
     if (data['boardingPass'] != null) {
       passinfo = data['boardingPass'];
       passType = PassType.boardingPass;
-      icon = Icons.card_travel;
+      icon = Utils.passTypeToIconData(passType);
     } else if (data['coupon'] != null) {
       passinfo = data['coupon'];
       passType = PassType.coupon;
-      icon = Icons.local_offer;
+      icon = Utils.passTypeToIconData(passType);
     } else if (data['eventTicket'] != null) {
       passinfo = data['eventTicket'];
       passType = PassType.eventTicket;
-      icon = Icons.event;
+      icon = Utils.passTypeToIconData(passType);
     } else if (data['generic'] != null) {
       passinfo = data['generic'];
       passType = PassType.generic;
-      icon = Icons.local_activity;
+      icon = Utils.passTypeToIconData(passType);
     } else if (data['storeCard'] != null) {
       passinfo = data['storeCard'];
       passType = PassType.storeCard;
-      icon = Icons.card_membership;
+      icon = Utils.passTypeToIconData(passType);
     }
     List<Field> hFields = Utils.jsonToFieldList(passinfo['headerFields']);
     List<Field> pFields = Utils.jsonToFieldList(passinfo['primaryFields']);
@@ -118,6 +118,25 @@ class PassInfo {
         lastModified: _lastModified,
         relevantDate: relDate);
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "formatVersion": 1,
+      "barcode": {
+        "message": this.bcImage.data,
+        "format": "PKBarcodeFormatQR",
+        "messageEncoding": "utf-8",
+        "altText": ""
+      },
+      "labelColor":
+          "rgb(${this.labelColor.red},${this.labelColor.green},${this.labelColor.blue})",
+      this.type.toString().substring(9): {
+        "headerFields": headerFields.map((e) => e.toJson()).toList(),
+        "primaryFields": primaryFields.map((e) => e.toJson()).toList(),
+        "secondaryFields": secondaryFields.map((e) => e.toJson()).toList(),
+      },
+    };
+  }
 }
 
 class Utils {
@@ -136,10 +155,10 @@ class Utils {
           .split(",")
           .map((e) => int.parse(e))
           .toList();
-
-      return rgb[0] + rgb[1] + rgb[2] < 600
-          ? Color.fromRGBO(rgb[0], rgb[1], rgb[2], 1)
-          : colors[Random().nextInt(colors.length)];
+      var color = Color.fromRGBO(rgb[0], rgb[1], rgb[2], 1);
+      return useWhiteForeground(color)
+          ? color
+          : Color.lerp(color, Colors.black, 0.4);
     } catch (_) {
       return colors[Random().nextInt(colors.length)];
     }
@@ -174,14 +193,47 @@ class Utils {
     }
     return fields;
   }
+
+  static IconData passTypeToIconData(PassType type) {
+    switch (type) {
+      case PassType.none:
+        return Icons.menu;
+        break;
+      case PassType.boardingPass:
+        return Icons.card_travel;
+        break;
+      case PassType.coupon:
+        return Icons.local_offer;
+        break;
+      case PassType.eventTicket:
+        return Icons.event;
+        break;
+      case PassType.generic:
+        return Icons.local_activity;
+        break;
+      case PassType.storeCard:
+        return Icons.card_membership;
+        break;
+      default:
+        return Icons.filter_5;
+    }
+  }
 }
 
 class Field {
-  final String key;
-  final String label;
-  final String value;
+  String key;
+  String label;
+  String value;
 
   Field(this.key, this.label, this.value);
+
+  Map<String, dynamic> toJson() {
+    return {
+      "key": this.key,
+      "label": this.label,
+      "value": this.value,
+    };
+  }
 }
 
 class BarcodeImage {

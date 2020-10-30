@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter_swiper/flutter_swiper.dart';
-import 'package:flutter_swiper/src/swiper_controller.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:passbox/model/pass_info.dart';
 import 'package:auto_size_text/auto_size_text.dart';
@@ -274,7 +273,10 @@ class _MiniPassCard extends State<MiniPassCard> {
                     child: Text(
                       'Deleting Pass',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headline6.copyWith(fontWeight: FontWeight.normal),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline6
+                          .copyWith(fontWeight: FontWeight.normal),
                     ),
                   ),
                   content: SingleChildScrollView(

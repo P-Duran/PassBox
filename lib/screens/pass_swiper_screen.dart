@@ -51,6 +51,7 @@ class _PassSwiperScreen extends State<PassSwiperScreen> {
                 return new Padding(
                   padding: EdgeInsets.only(top: 0),
                   child: Swiper(
+                    key: UniqueKey(),
                     loop: false,
                     viewportFraction: 0.9,
                     itemCount: snapshot.data.length,
@@ -70,11 +71,8 @@ class _PassSwiperScreen extends State<PassSwiperScreen> {
                           color: Colors.white),
                     ),
                     onIndexChanged: (value) {
-                      
-                       widget.swiperController.move(value, animation: false);
-                      
+                      widget.swiperController.move(value, animation: false);
                     },
-                    
                   ),
                 );
               }
